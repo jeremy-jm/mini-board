@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Button, Skeleton } from "antd";
+import clsx from "clsx";
 import {
   DndContext,
   DragOverlay,
@@ -14,6 +15,7 @@ import { DraggableCard } from "../../dnd/DraggableCard";
 import {
   SortableContext,
   verticalListSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import { TaskCard } from "../task/TaskCard";
 import type { TaskStatus, Task } from "../types/types";
@@ -23,16 +25,6 @@ const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: "in_progress", title: "In Progress" },
   { id: "done", title: "Done" },
 ];
-
-export function BoardPageSkeleton() {
-  return (
-    <div className="grid min-h-0 flex-1 grid-cols-3 gap-4">
-      <Skeleton active />
-      <Skeleton active />
-      <Skeleton active />
-    </div>
-  );
-}
 
 export function BoardPage() {
   const { t } = useTranslation();
@@ -45,6 +37,14 @@ export function BoardPage() {
     "2": "todo",
     "3": "in_progress",
     "4": "done",
+  });
+
+  const [taskOrderMap, setTaskOrderMap] = useState<
+    Record<TaskStatus, string[]>
+  >({
+    todo: ["1", "2"],
+    in_progress: ["3"],
+    done: ["4"],
   });
 
   // current task id
@@ -60,6 +60,7 @@ export function BoardPage() {
       title: "Task 1",
       description: "Description 1",
       status: "todo",
+      order: 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
@@ -68,6 +69,7 @@ export function BoardPage() {
       title: "Task 2",
       description: "Description 2",
       status: "todo",
+      order: 2,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
@@ -76,6 +78,7 @@ export function BoardPage() {
       title: "Task 3",
       description: "Description 3",
       status: "in_progress",
+      order: 3,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
@@ -84,23 +87,32 @@ export function BoardPage() {
       title: "Task 4",
       description: "Description 4",
       status: "done",
+      order: 4,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
   ];
 
   const getTasksByStatus = (status: TaskStatus): Task[] => {
-    return tasks.filter((task) => taskStatusMap[task.id] === status);
+    const orderIds = taskOrderMap[status] || [];
+    return orderIds
+      .map((id) => tasks.find((task) => task.id === id))
+      .filter((task): task is Task => task !== undefined);
   };
 
   const getActiveTask = () => {
     return tasks.find((task) => task.id === activeTaskId);
   };
 
+  // shake animation for DragOverlay card
+  const [shake, setShake] = useState(false);
+
   const handleDragStart = (event: DragStartEvent) => {
     const taskId = event.active.id as string;
     setActiveTaskId(taskId);
     setOverId(null);
+    // trigger shake animation when drag starts
+    setShake(true);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -112,24 +124,72 @@ export function BoardPage() {
       if (!taskId) return;
 
       const overId = over.id as string;
+      const currentColumn = taskStatusMap[taskId];
 
-      // check if in column
+      // check if drag to column
       const targetColumn = COLUMNS.find((col) => col.id === overId)?.id;
 
       if (targetColumn) {
         // drag to column
-        setTaskStatusMap((prev) => ({
-          ...prev,
-          [taskId]: targetColumn,
-        }));
-      } else {
-        // drag to another card, update position in column
-        const overTaskStatus = taskStatusMap[overId];
-        if (overTaskStatus) {
+        if (currentColumn !== targetColumn) {
+          // drag to another column
           setTaskStatusMap((prev) => ({
             ...prev,
-            [taskId]: overTaskStatus,
+            [taskId]: targetColumn,
           }));
+          // remove from original column, add to target column
+          setTaskOrderMap((prev) => {
+            const sourceOrder = prev[currentColumn].filter(
+              (id) => id !== taskId,
+            );
+            return {
+              ...prev,
+              [currentColumn]: sourceOrder,
+              [targetColumn]: [...prev[targetColumn], taskId],
+            };
+          });
+        }
+      } else {
+        // drag to another card
+        const overTaskStatus = taskStatusMap[overId];
+        if (overTaskStatus) {
+          // drag to same column
+          if (currentColumn === overTaskStatus) {
+            const columnOrder = taskOrderMap[currentColumn];
+            const oldIndex = columnOrder.indexOf(taskId);
+            const newIndex = columnOrder.indexOf(overId);
+
+            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+              setTaskOrderMap((prev) => ({
+                ...prev,
+                [currentColumn]: arrayMove(
+                  prev[currentColumn],
+                  oldIndex,
+                  newIndex,
+                ),
+              }));
+            }
+          } else {
+            // drag to another column
+            setTaskStatusMap((prev) => ({
+              ...prev,
+              [taskId]: overTaskStatus,
+            }));
+            // remove from original column, insert to target position
+            setTaskOrderMap((prev) => {
+              const sourceOrder = prev[currentColumn].filter(
+                (id) => id !== taskId,
+              );
+              const targetOrder = [...prev[overTaskStatus]];
+              const overIndex = targetOrder.indexOf(overId);
+              targetOrder.splice(overIndex, 0, taskId);
+              return {
+                ...prev,
+                [currentColumn]: sourceOrder,
+                [overTaskStatus]: targetOrder,
+              };
+            });
+          }
         }
       }
     }
@@ -201,11 +261,11 @@ export function BoardPage() {
                   >
                     <div className="flex flex-1 flex-col gap-2">
                       {columnTasks.map((task) => {
-                        // 在目标位置前显示占位符
+                        // show placeholder when drag to same column
                         const showPlaceholder =
                           activeTaskId &&
                           overId === task.id &&
-                          taskStatusMap[activeTaskId] !== column.id;
+                          activeTaskId !== task.id;
 
                         return (
                           <div key={task.id} className="flex flex-col gap-2">
@@ -223,7 +283,7 @@ export function BoardPage() {
                           </div>
                         );
                       })}
-                      {/* 如果吸附到列但没有具体卡片，在底部显示占位符 */}
+                      {/* show placeholder when drag to column but no card */}
                       {activeTaskId &&
                         overId === column.id &&
                         columnTasks.length === 0 && (
@@ -237,10 +297,12 @@ export function BoardPage() {
           })}
         </div>
 
-        {/* 拖拽预览覆盖层 */}
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeTaskId ? (
-            <div className="pointer-events-none max-w-md cursor-grabbing">
+            <div
+              className={clsx("pointer-events-none max-w-md cursor-grabbing", shake && "task-card-balance")}
+              onAnimationEnd={() => setShake(false)}
+            >
               <TaskCard
                 id={activeTaskId}
                 title={getActiveTask()?.title}
@@ -248,12 +310,7 @@ export function BoardPage() {
                 onDelete={() => {}}
               />
             </div>
-          ) : // <div className="rotate-3 scale-105 cursor-grabbing opacity-90">
-          //   <div className="rounded-md border border-gray-300 bg-white p-3 text-gray-900 shadow-xl ring-2 ring-blue-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-          //     <div className="font-medium">{getActiveTask()?.title}</div>\
-          //   </div>
-          // </div>
-          null}
+          ) : null}
         </DragOverlay>
       </DndContext>
     </div>

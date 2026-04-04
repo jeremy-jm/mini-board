@@ -22,17 +22,13 @@ export function DraggableCard({ id, children }: Props) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   };
-
-  // extract onPointerDown from listeners to avoid conflict with custom processor
-  const { onPointerDown: listenersPointerDown, ...restListeners } =
-    listeners || {};
 
   const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("button")) return;
     setBalance(true);
-    listenersPointerDown?.(e);
+    listeners?.onPointerDown?.(e);
   };
 
   return (
@@ -41,7 +37,7 @@ export function DraggableCard({ id, children }: Props) {
       style={style}
       className="cursor-grab touch-none active:cursor-grabbing"
       {...attributes}
-      {...restListeners}
+      {...listeners}
       onPointerDown={handlePointerDown}
     >
       <div

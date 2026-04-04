@@ -1,6 +1,5 @@
 import { Button } from "antd";
-import clsx from "clsx";
-import { memo, useState } from "react";
+import { memo } from "react";
 
 interface Props {
   id: string;
@@ -9,15 +8,10 @@ interface Props {
   onDelete: () => void;
 }
 
-function TaskCardComponent({ id, title, onEdit, onDelete }: Props) {
-  const [balance, setBalance] = useState(false);
-
+function TaskCardComponent({ title, onEdit, onDelete }: Props) {
   return (
     <div className="rounded-md border border-gray-300 bg-white p-3 text-gray-900 shadow-sm transition-shadow hover:shadow-md dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-      <div
-        className={clsx(balance && "task-card-balance")}
-        onAnimationEnd={() => setBalance(false)}
-      >
+      <div>
         <div className="font-medium">{title}</div>
       </div>
       <div className="mt-2 flex items-center justify-end gap-2">

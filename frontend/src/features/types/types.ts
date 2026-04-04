@@ -5,6 +5,7 @@ export type Task = {
     title: string;
     description: string;
     status: TaskStatus;
+    order: number;
     createdAt: string;
     updatedAt: string;
 };
