@@ -1,18 +1,15 @@
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "antd";
 import clsx from "clsx";
-import { memo, useState, type PointerEvent, type ReactNode } from "react";
+import { memo, useState } from "react";
 
 interface Props {
   id: string;
-  children: ReactNode;
+  title?: string;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-function TaskCardComponent({ id, children, onEdit, onDelete }: Props) {
-  const {} = useSortable({ id });
+function TaskCardComponent({ id, title, onEdit, onDelete }: Props) {
   const [balance, setBalance] = useState(false);
 
   return (
@@ -21,7 +18,7 @@ function TaskCardComponent({ id, children, onEdit, onDelete }: Props) {
         className={clsx(balance && "task-card-balance")}
         onAnimationEnd={() => setBalance(false)}
       >
-        {children}
+        <div className="font-medium">{title}</div>
       </div>
       <div className="mt-2 flex items-center justify-end gap-2">
         <Button type="primary" onClick={onEdit}>
