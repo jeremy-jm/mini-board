@@ -9,9 +9,10 @@ export async function registerTaskRoutes(
   app: FastifyInstance,
   service: TaskService,
 ) {
-  app.get("/tasks", async () => ({ data: await service.listTasks() }));
 
-  app.get("/members", async () => ({ data: await service.listMembers() }));
+    app.get("/task-statuses", async () => service.listTaskStatuses());
+
+  app.get("/tasks", async () => ({ data: await service.listTasks() }));
 
   app.post("/tasks", async (request, reply) => {
     const body = z.object({

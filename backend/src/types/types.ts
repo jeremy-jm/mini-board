@@ -7,6 +7,12 @@ export interface MemberDto {
   avatar: string;
 }
 
+export interface TaskStatusColumnDto {
+  id: TaskStatus;
+  title: string;
+  sortOrder: number;
+}
+
 export interface TaskDto {
   id: string;
   title: string;

@@ -1,10 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import type {
-  MemberDto,
   ReorderItem,
   TaskDto,
   TaskPriority,
   TaskStatus,
+  TaskStatusColumnDto,
 } from "../types/types.js";
 
 export interface CreateTaskInput {
@@ -19,12 +19,15 @@ export interface CreateTaskInput {
 export type UpdateTaskInput = Partial<CreateTaskInput>;
 
 export interface TaskService {
+    // Task Status(Different table)
+    listTaskStatuses(): Promise<TaskStatusColumnDto[]>;
+    // Tasks
   listTasks(): Promise<TaskDto[]>;
   createTask(input: CreateTaskInput): Promise<TaskDto>;
   updateTask(id: string, input: UpdateTaskInput): Promise<TaskDto>;
   deleteTask(id: string): Promise<void>;
   reorderTasks(items: ReorderItem[]): Promise<void>;
-  listMembers(): Promise<MemberDto[]>;
+
 }
 
 function toTaskDto(task: any): TaskDto {
@@ -46,6 +49,17 @@ function toTaskDto(task: any): TaskDto {
 
 export function createPrismaTaskService(prisma: PrismaClient): TaskService {
   return {
+    async listTaskStatuses() {
+        const rows = await prisma.taskStatusColumn.findMany({
+          orderBy: { sortOrder: "asc" },
+        });
+        return rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          sortOrder: r.sortOrder,
+        }));
+      },
+
     async listTasks() {
       const tasks = await prisma.task.findMany({
         include: {
@@ -114,17 +128,6 @@ export function createPrismaTaskService(prisma: PrismaClient): TaskService {
         where: { id: { in: items.map((item) => item.id) } },
         data: { order: { increment: 1 } },
       });
-    },
-
-    async listMembers() {
-      const members = await prisma.member.findMany({
-        orderBy: { createdAt: "asc" },
-      });
-      return members.map((member) => ({
-        id: member.id,
-        name: member.name,
-        avatar: member.avatar,
-      }));
     },
   };
 }

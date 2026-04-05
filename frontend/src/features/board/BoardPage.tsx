@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { useRef, useState } from "react";
-import { Button } from "antd";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Button, Spin } from "antd";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { fetchTaskStatuses } from "../../store/taskStatusSlice";
 import clsx from "clsx";
 import {
   DndContext,
@@ -23,12 +25,6 @@ import {
 } from "@dnd-kit/sortable";
 import { TaskCard } from "../task/TaskCard";
 import type { TaskStatus, Task } from "../types/types";
-
-const COLUMNS: { id: TaskStatus; title: string }[] = [
-  { id: "todo", title: "Todo" },
-  { id: "in_progress", title: "In Progress" },
-  { id: "done", title: "Done" },
-];
 
 type BoardState = {
   taskStatusMap: Record<string, TaskStatus>;
@@ -53,6 +49,7 @@ function applyDrop(
   activeId: string,
   overId: string,
   board: BoardState,
+  columns: { id: TaskStatus; title: string }[],
 ): BoardState {
   if (activeId === overId) return board;
 
@@ -69,7 +66,7 @@ function applyDrop(
 
   nextOrder[fromCol] = nextOrder[fromCol].filter((id) => id !== activeId);
 
-  const columnHit = COLUMNS.find((c) => c.id === overId);
+  const columnHit = columns.find((c) => c.id === overId);
   let toCol: TaskStatus;
   let insertIndex: number;
 
@@ -90,7 +87,11 @@ function applyDrop(
   return { taskStatusMap: nextMap, taskOrderMap: nextOrder };
 }
 
-function boardEqual(a: BoardState, b: BoardState): boolean {
+function boardEqual(
+  a: BoardState,
+  b: BoardState,
+  columns: { id: TaskStatus; title: string }[],
+): boolean {
   if (a.taskStatusMap === b.taskStatusMap && a.taskOrderMap === b.taskOrderMap)
     return true;
   const ids = new Set([
@@ -100,7 +101,7 @@ function boardEqual(a: BoardState, b: BoardState): boolean {
   for (const id of ids) {
     if (a.taskStatusMap[id] !== b.taskStatusMap[id]) return false;
   }
-  for (const col of COLUMNS) {
+  for (const col of columns) {
     const oa = a.taskOrderMap[col.id];
     const ob = b.taskOrderMap[col.id];
     if (oa.length !== ob.length) return false;
@@ -113,6 +114,17 @@ function boardEqual(a: BoardState, b: BoardState): boolean {
 
 export function BoardPage() {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
+  const columns = useAppSelector((s) =>
+    [...s.taskStatus.items].sort((a, b) => a.sortOrder - b.sortOrder),
+  );
+  const loadState = useAppSelector((s) => s.taskStatus.loadState);
+  const loadError = useAppSelector((s) => s.taskStatus.error);
+
+  useEffect(() => {
+    void dispatch(fetchTaskStatuses());
+  }, [dispatch]);
+
   const [board, setBoard] = useState<BoardState>(initialBoard);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -132,8 +144,13 @@ export function BoardPage() {
       description: "Description 1",
       status: "todo",
       order: 1,
+      priority: "medium",
+      dueDate: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      assigneeId: null,
+      assigneeName: null,
+      assigneeAvatar: null,
     },
     {
       id: "2",
@@ -141,8 +158,13 @@ export function BoardPage() {
       description: "Description 2",
       status: "todo",
       order: 2,
+      priority: "medium",
+      dueDate: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      assigneeId: null,
+      assigneeName: null,
+      assigneeAvatar: null,
     },
     {
       id: "3",
@@ -150,8 +172,13 @@ export function BoardPage() {
       description: "Description 3",
       status: "in_progress",
       order: 3,
+      priority: "medium",
+      dueDate: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      assigneeId: null,
+      assigneeName: null,
+      assigneeAvatar: null,
     },
     {
       id: "4",
@@ -159,8 +186,13 @@ export function BoardPage() {
       description: "Description 4",
       status: "done",
       order: 4,
+      priority: "medium",
+      dueDate: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      assigneeId: null,
+      assigneeName: null,
+      assigneeAvatar: null,
     },
   ];
 
@@ -175,8 +207,8 @@ export function BoardPage() {
 
   const commitDrop = (activeId: string, overIdArg: string) => {
     setBoard((prev) => {
-      const next = applyDrop(activeId, overIdArg, prev);
-      return boardEqual(prev, next) ? prev : next;
+      const next = applyDrop(activeId, overIdArg, prev, columns);
+      return boardEqual(prev, next, columns) ? prev : next;
     });
   };
 
@@ -228,6 +260,35 @@ export function BoardPage() {
   const placeholderClass =
     "h-20 shrink-0 rounded-md border-2 border-dashed border-blue-400 bg-blue-50 dark:bg-blue-900/20";
 
+  if (loadState === "loading" || loadState === "idle") {
+    return (
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center px-4 pb-4 pt-2 md:px-6">
+        <Spin size="large" tip="Loading columns…" />
+      </div>
+    );
+  }
+
+  if (loadState === "failed") {
+    return (
+      <div className="flex min-h-0 w-full flex-1 flex-col px-4 pb-4 pt-2 md:px-6">
+        <Alert
+          type="error"
+          showIcon
+          message="Failed to load board columns"
+          description={loadError ?? "Unknown error"}
+          action={
+            <Button
+              size="small"
+              onClick={() => void dispatch(fetchTaskStatuses())}
+            >
+              Retry
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col px-4 pb-4 pt-2 md:px-6">
       <div className="mb-4 flex shrink-0 items-center justify-between">
@@ -245,7 +306,7 @@ export function BoardPage() {
         onDragEnd={handleDragEnd}
       >
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
-          {COLUMNS.map((column) => {
+          {columns.map((column) => {
             const columnTasks = getTasksByStatus(column.id);
             const isHighlighted =
               Boolean(activeTaskId) && isColumnHighlighted(column.id);

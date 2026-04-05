@@ -19,6 +19,14 @@ enum TaskPriority {
   high
 }
 
+model TaskStatusColumn {
+  id        TaskStatus @id
+  title     String
+  sortOrder Int        @map("sort_order")
+
+  @@map("task_status")
+}
+
 model Member {
   id        String   @id @default(cuid())
   name      String   @unique

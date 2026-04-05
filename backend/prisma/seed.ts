@@ -7,6 +7,20 @@ import {
 const prisma = new PrismaClient();
 
 async function main() {
+  const statusColumns = [
+    { id: "todo" as const, title: "Todo", sortOrder: 0 },
+    { id: "in_progress" as const, title: "In Progress", sortOrder: 1 },
+    { id: "done" as const, title: "Done", sortOrder: 2 },
+  ];
+
+  for (const col of statusColumns) {
+    await prisma.taskStatusColumn.upsert({
+      where: { id: col.id },
+      create: col,
+      update: { title: col.title, sortOrder: col.sortOrder },
+    });
+  }
+
   const members = [
     { name: "Jeremy", avatar: "https://i.pravatar.cc/100?img=1" },
     { name: "Rayman", avatar: "https://i.pravatar.cc/100?img=2" },
