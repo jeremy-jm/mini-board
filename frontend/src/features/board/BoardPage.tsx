@@ -15,8 +15,8 @@ import {
   type DragCancelEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { DroppableColumn } from "../../dnd/DrappableColumn";
-import { DraggableCard } from "../../dnd/DraggableCard";
+import { DroppableColumn } from "../dnd/DrappableColumn";
+import { DraggableCard } from "../dnd/DraggableCard";
 import {
   SortableContext,
   verticalListSortingStrategy,
