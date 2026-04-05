@@ -1,3 +1,8 @@
 {
-    "appName": "Mini Board"
+    "appName": "Mini Board",
+    "addTask": "Add task",
+    "boardLoading": "Loading board…",
+    "boardLoadError": "Failed to load board",
+    "retry": "Retry",
+    "unknownError": "Unknown error"
 }

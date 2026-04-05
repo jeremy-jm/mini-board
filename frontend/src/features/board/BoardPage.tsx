@@ -1,11 +1,17 @@
 import { useTranslation } from "react-i18next";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Button, Spin } from "antd";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { fetchTaskStatuses } from "../../store/taskStatusSlice";
+import {
+  optimisticReorder,
+  replaceTasks,
+  syncOrders,
+} from "../../store/taskSlice";
 import clsx from "clsx";
 import { TaskCard } from "../task/TaskCard";
 import type { TaskStatus, Task } from "../types/types";
+import { applyTasksAfterDrop } from "./taskReorder";
+import { useBoardInitialLoad } from "./useBoardInitialLoad";
 
 import {
   DndContext,
@@ -25,22 +31,24 @@ import {
   type DragCancelEvent,
 } from "../dnd/dnd";
 
+function tasksUnchanged(before: Task[], after: Task[]): boolean {
+  if (before.length !== after.length) return false;
+  const nextById = new Map(after.map((t) => [t.id, t]));
+  return before.every((t) => {
+    const n = nextById.get(t.id);
+    return n && n.status === t.status && n.order === t.order;
+  });
+}
+
 export function BoardPage() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
+  const { bootstrapping, bootstrapError, retry } = useBoardInitialLoad();
+
   const columns = useAppSelector((s) =>
     [...s.taskStatus.items].sort((a, b) => a.sortOrder - b.sortOrder),
   );
-  const loadState = useAppSelector((s) => s.taskStatus.loadState);
-  const loadError = useAppSelector((s) => s.taskStatus.error);
-
-  useEffect(() => {
-    void dispatch(fetchTaskStatuses());
-  }, [dispatch]);
-
-  const { tasks, members, loading, submitting, error } = useAppSelector(
-    (state) => state.tasks,
-  );
+  const { tasks } = useAppSelector((state) => state.tasks);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -53,47 +61,31 @@ export function BoardPage() {
     }),
   );
 
-  const getTasksByStatus = (status: TaskStatus): Task[] => {
-    const orderIds = tasks
+  const columnIds = columns.map((c) => c.id);
+
+  const getTasksByStatus = (status: TaskStatus): Task[] =>
+    tasks
       .filter((task) => task.status === status)
-      .map((task) => task.id);
-    return orderIds
-      .map((id) => tasks.find((task) => task.id === id))
-      .filter((task): task is Task => task !== undefined);
-  };
+      .sort((a, b) => a.order - b.order);
 
   const getActiveTask = () => tasks.find((task) => task.id === activeTaskId);
 
+  // ----- DnD Event Handlers Start -----
   const handleDragStart = (event: DragStartEvent) => {
     boardBeforeDragRef.current = structuredClone(tasks);
-    const taskId = event.active.id as string;
-    setActiveTaskId(taskId);
+    setActiveTaskId(event.active.id as string);
     setOverId(null);
     setShake(true);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) {
-      setOverId(null);
-      return;
-    }
-    const oid = over.id as string;
-    setOverId(oid);
-    void dispatch(
-      syncReorderTasks([
-        {
-          id: active.id as string,
-          status: oid,
-          order: tasks.find((task) => task.id === active.id)?.order ?? 0,
-        },
-      ]),
-    );
+    const { over } = event;
+    setOverId(over ? (over.id as string) : null);
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
     const snap = boardBeforeDragRef.current;
-    if (snap) void dispatch(syncReorderTasks(snap));
+    if (snap) dispatch(replaceTasks(snap));
     boardBeforeDragRef.current = null;
     setActiveTaskId(null);
     setOverId(null);
@@ -102,22 +94,40 @@ export function BoardPage() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (over) {
-      void dispatch(
-        syncReorderTasks([
-          {
-            id: active.id as string,
-            status: over.id as string,
-            order: tasks.find((task) => task.id === active.id)?.order ?? 0,
-          },
-        ]),
-      );
-    }
+    const snapshot = boardBeforeDragRef.current;
     boardBeforeDragRef.current = null;
     setActiveTaskId(null);
     setOverId(null);
     setShake(false);
+
+    if (!over) {
+      if (snapshot) dispatch(replaceTasks(snapshot));
+      return;
+    }
+
+    const nextTasks = applyTasksAfterDrop(
+      tasks,
+      active.id as string,
+      over.id as string,
+      columnIds,
+    );
+    if (tasksUnchanged(tasks, nextTasks)) return;
+
+    dispatch(optimisticReorder({ nextTasks }));
+    const items = nextTasks.map((tk) => ({
+      id: tk.id,
+      status: tk.status,
+      order: tk.order,
+    }));
+    void (async () => {
+      try {
+        await dispatch(syncOrders(items)).unwrap();
+      } catch {
+        if (snapshot) dispatch(replaceTasks(snapshot));
+      }
+    })();
   };
+  // ----- DnD Event Handlers End -----
 
   const isColumnHighlighted = (columnId: TaskStatus): boolean => {
     if (!overId) return false;
@@ -128,28 +138,25 @@ export function BoardPage() {
   const placeholderClass =
     "h-20 shrink-0 rounded-md border-2 border-dashed border-blue-400 bg-blue-50 dark:bg-blue-900/20";
 
-  if (loadState === "loading" || loadState === "idle") {
+  if (bootstrapping) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center px-4 pb-4 pt-2 md:px-6">
-        <Spin size="large" tip="Loading columns…" />
+        <Spin size="large" tip={t("boardLoading")} />
       </div>
     );
   }
 
-  if (loadState === "failed") {
+  if (bootstrapError) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col px-4 pb-4 pt-2 md:px-6">
         <Alert
           type="error"
           showIcon
-          message="Failed to load board columns"
-          description={loadError ?? "Unknown error"}
+          message={t("boardLoadError")}
+          description={bootstrapError ?? t("unknownError")}
           action={
-            <Button
-              size="small"
-              onClick={() => void dispatch(fetchTaskStatuses())}
-            >
-              Retry
+            <Button size="small" onClick={() => retry()}>
+              {t("retry")}
             </Button>
           }
         />

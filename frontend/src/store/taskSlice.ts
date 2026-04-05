@@ -23,7 +23,7 @@ interface TaskState {
 const initialState: TaskState = {
   tasks: [],
   members: [],
-  loading: false,
+  loading: true,
   submitting: false,
   rollbackSnapshot: null,
   error: null,
@@ -31,7 +31,7 @@ const initialState: TaskState = {
 
 export const fetchInitialData = createAsyncThunk(
   "tasks/fetchInitialData",
-  async () => {
+  async (_arg?: { silent?: boolean }) => {
     const [tasksResponse, membersResponse] = await Promise.all([
       apiClient.get("/tasks"),
       apiClient.get("/members"),
@@ -69,28 +69,31 @@ export const deleteTask = createAsyncThunk(
   },
 );
 
-// sync reorder tasks
 export const syncOrders = createAsyncThunk(
-  "tasks/syncReorderTasks",
-  async (tasks: { id: string; status: TaskStatus; order: number }[]) => {
-    await apiClient.post<{ data: Task[] }>("/tasks/reorder", { tasks });
-    return tasks;
+  "tasks/syncOrders",
+  async (
+    items: { id: string; status: TaskStatus; order: number }[],
+    { dispatch },
+  ) => {
+    await apiClient.post("/tasks/reorder", { items });
+    await dispatch(fetchInitialData({ silent: true })).unwrap();
   },
 );
-
-// sort by order
-function sortByOrder(tasks: Task[]) {
-  return [...tasks].sort((a, b) => a.order - b.order);
-}
 
 export const taskSlice = createSlice({
   name: "tasks",
   initialState,
   reducers: {
-    // optimistic reorder
-    optimisticReorder: (state, action) => {
+    optimisticReorder: (
+      state,
+      action: PayloadAction<{ nextTasks: Task[] }>,
+    ) => {
       state.rollbackSnapshot = state.tasks.map((task) => ({ ...task }));
-      state.tasks = sortByOrder(action.payload.nextTasks);
+      state.tasks = action.payload.nextTasks;
+    },
+    replaceTasks: (state, action: PayloadAction<Task[]>) => {
+      state.tasks = action.payload;
+      state.rollbackSnapshot = null;
     },
     // rollback affected columns
     rollbackAffectedColumns(
@@ -111,17 +114,23 @@ export const taskSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // fetch initial data
-      .addCase(fetchInitialData.pending, (state) => {
-        state.loading = true;
+      .addCase(fetchInitialData.pending, (state, action) => {
+        if (!action.meta.arg?.silent) {
+          state.loading = true;
+          state.error = null;
+        }
       })
       .addCase(fetchInitialData.fulfilled, (state, action) => {
-        state.loading = false;
+        if (!action.meta.arg?.silent) {
+          state.loading = false;
+        }
         state.tasks = action.payload.tasks;
         state.members = action.payload.members;
       })
       .addCase(fetchInitialData.rejected, (state, action) => {
-        state.loading = false;
+        if (!action.meta.arg?.silent) {
+          state.loading = false;
+        }
         state.error = action.error.message ?? null;
       })
       // create task
@@ -163,10 +172,21 @@ export const taskSlice = createSlice({
       .addCase(deleteTask.rejected, (state, action) => {
         state.submitting = false;
         state.error = action.error.message ?? null;
+      })
+      .addCase(syncOrders.pending, (state) => {
+        state.submitting = true;
+      })
+      .addCase(syncOrders.fulfilled, (state) => {
+        state.submitting = false;
+        state.rollbackSnapshot = null;
+      })
+      .addCase(syncOrders.rejected, (state) => {
+        state.submitting = false;
       });
   },
 });
 
-export const { optimisticReorder, rollbackAffectedColumns } = taskSlice.actions;
+export const { optimisticReorder, rollbackAffectedColumns, replaceTasks } =
+  taskSlice.actions;
 
 export default taskSlice.reducer;
