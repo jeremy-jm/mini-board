@@ -1,10 +1,15 @@
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
-import { Button, Skeleton } from "antd";
+import { useRef, useState } from "react";
+import { Button } from "antd";
 import clsx from "clsx";
 import {
   DndContext,
   DragOverlay,
+  PointerSensor,
+  closestCorners,
+  defaultDropAnimationSideEffects,
+  useSensor,
+  useSensors,
   type DragStartEvent,
   type DragOverEvent,
   type DragCancelEvent,
@@ -15,7 +20,6 @@ import { DraggableCard } from "../../dnd/DraggableCard";
 import {
   SortableContext,
   verticalListSortingStrategy,
-  arrayMove,
 } from "@dnd-kit/sortable";
 import { TaskCard } from "../task/TaskCard";
 import type { TaskStatus, Task } from "../types/types";
@@ -26,34 +30,101 @@ const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: "done", title: "Done" },
 ];
 
-export function BoardPage() {
-  const { t } = useTranslation();
+type BoardState = {
+  taskStatusMap: Record<string, TaskStatus>;
+  taskOrderMap: Record<TaskStatus, string[]>;
+};
 
-  // task status mapping: task id -> column id
-  const [taskStatusMap, setTaskStatusMap] = useState<
-    Record<string, TaskStatus>
-  >({
+const initialBoard: BoardState = {
+  taskStatusMap: {
     "1": "todo",
     "2": "todo",
     "3": "in_progress",
     "4": "done",
-  });
-
-  const [taskOrderMap, setTaskOrderMap] = useState<
-    Record<TaskStatus, string[]>
-  >({
+  },
+  taskOrderMap: {
     todo: ["1", "2"],
     in_progress: ["3"],
     done: ["4"],
-  });
+  },
+};
 
-  // current task id
+function applyDrop(
+  activeId: string,
+  overId: string,
+  board: BoardState,
+): BoardState {
+  if (activeId === overId) return board;
+
+  const { taskStatusMap: prevMap, taskOrderMap: prevOrder } = board;
+  const fromCol = prevMap[activeId];
+  if (!fromCol) return board;
+
+  const nextMap = { ...prevMap };
+  const nextOrder: Record<TaskStatus, string[]> = {
+    todo: [...prevOrder.todo],
+    in_progress: [...prevOrder.in_progress],
+    done: [...prevOrder.done],
+  };
+
+  nextOrder[fromCol] = nextOrder[fromCol].filter((id) => id !== activeId);
+
+  const columnHit = COLUMNS.find((c) => c.id === overId);
+  let toCol: TaskStatus;
+  let insertIndex: number;
+
+  if (columnHit) {
+    toCol = columnHit.id;
+    insertIndex = nextOrder[toCol].length;
+  } else {
+    const overCol = prevMap[overId];
+    if (!overCol) return board;
+    toCol = overCol;
+    insertIndex = nextOrder[toCol].indexOf(overId);
+    if (insertIndex < 0) insertIndex = nextOrder[toCol].length;
+  }
+
+  nextMap[activeId] = toCol;
+  nextOrder[toCol].splice(insertIndex, 0, activeId);
+
+  return { taskStatusMap: nextMap, taskOrderMap: nextOrder };
+}
+
+function boardEqual(a: BoardState, b: BoardState): boolean {
+  if (a.taskStatusMap === b.taskStatusMap && a.taskOrderMap === b.taskOrderMap)
+    return true;
+  const ids = new Set([
+    ...Object.keys(a.taskStatusMap),
+    ...Object.keys(b.taskStatusMap),
+  ]);
+  for (const id of ids) {
+    if (a.taskStatusMap[id] !== b.taskStatusMap[id]) return false;
+  }
+  for (const col of COLUMNS) {
+    const oa = a.taskOrderMap[col.id];
+    const ob = b.taskOrderMap[col.id];
+    if (oa.length !== ob.length) return false;
+    for (let i = 0; i < oa.length; i++) {
+      if (oa[i] !== ob[i]) return false;
+    }
+  }
+  return true;
+}
+
+export function BoardPage() {
+  const { t } = useTranslation();
+  const [board, setBoard] = useState<BoardState>(initialBoard);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-
-  // over id
   const [overId, setOverId] = useState<string | null>(null);
+  const [shake, setShake] = useState(false);
+  const boardBeforeDragRef = useRef<BoardState | null>(null);
 
-  // tasks data
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+  );
+
   const tasks: Task[] = [
     {
       id: "1",
@@ -94,125 +165,68 @@ export function BoardPage() {
   ];
 
   const getTasksByStatus = (status: TaskStatus): Task[] => {
-    const orderIds = taskOrderMap[status] || [];
+    const orderIds = board.taskOrderMap[status] ?? [];
     return orderIds
       .map((id) => tasks.find((task) => task.id === id))
       .filter((task): task is Task => task !== undefined);
   };
 
-  const getActiveTask = () => {
-    return tasks.find((task) => task.id === activeTaskId);
+  const getActiveTask = () => tasks.find((task) => task.id === activeTaskId);
+
+  const commitDrop = (activeId: string, overIdArg: string) => {
+    setBoard((prev) => {
+      const next = applyDrop(activeId, overIdArg, prev);
+      return boardEqual(prev, next) ? prev : next;
+    });
   };
 
-  // shake animation for DragOverlay card
-  const [shake, setShake] = useState(false);
-
   const handleDragStart = (event: DragStartEvent) => {
+    boardBeforeDragRef.current = structuredClone(board);
     const taskId = event.active.id as string;
     setActiveTaskId(taskId);
     setOverId(null);
-    // trigger shake animation when drag starts
     setShake(true);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    if (over) {
-      setOverId(over.id as string);
-
-      const taskId = activeTaskId;
-      if (!taskId) return;
-
-      const overId = over.id as string;
-      const currentColumn = taskStatusMap[taskId];
-
-      // check if drag to column
-      const targetColumn = COLUMNS.find((col) => col.id === overId)?.id;
-
-      if (targetColumn) {
-        // drag to column
-        if (currentColumn !== targetColumn) {
-          // drag to another column
-          setTaskStatusMap((prev) => ({
-            ...prev,
-            [taskId]: targetColumn,
-          }));
-          // remove from original column, add to target column
-          setTaskOrderMap((prev) => {
-            const sourceOrder = prev[currentColumn].filter(
-              (id) => id !== taskId,
-            );
-            return {
-              ...prev,
-              [currentColumn]: sourceOrder,
-              [targetColumn]: [...prev[targetColumn], taskId],
-            };
-          });
-        }
-      } else {
-        // drag to another card
-        const overTaskStatus = taskStatusMap[overId];
-        if (overTaskStatus) {
-          // drag to same column
-          if (currentColumn === overTaskStatus) {
-            const columnOrder = taskOrderMap[currentColumn];
-            const oldIndex = columnOrder.indexOf(taskId);
-            const newIndex = columnOrder.indexOf(overId);
-
-            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-              setTaskOrderMap((prev) => ({
-                ...prev,
-                [currentColumn]: arrayMove(
-                  prev[currentColumn],
-                  oldIndex,
-                  newIndex,
-                ),
-              }));
-            }
-          } else {
-            // drag to another column
-            setTaskStatusMap((prev) => ({
-              ...prev,
-              [taskId]: overTaskStatus,
-            }));
-            // remove from original column, insert to target position
-            setTaskOrderMap((prev) => {
-              const sourceOrder = prev[currentColumn].filter(
-                (id) => id !== taskId,
-              );
-              const targetOrder = [...prev[overTaskStatus]];
-              const overIndex = targetOrder.indexOf(overId);
-              targetOrder.splice(overIndex, 0, taskId);
-              return {
-                ...prev,
-                [currentColumn]: sourceOrder,
-                [overTaskStatus]: targetOrder,
-              };
-            });
-          }
-        }
-      }
+    const { active, over } = event;
+    if (!over) {
+      setOverId(null);
+      return;
     }
+    const oid = over.id as string;
+    setOverId(oid);
+    commitDrop(active.id as string, oid);
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
+    const snap = boardBeforeDragRef.current;
+    if (snap) setBoard(snap);
+    boardBeforeDragRef.current = null;
     setActiveTaskId(null);
     setOverId(null);
+    setShake(false);
   };
 
-  const handleDragEnd = (_event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over) {
+      commitDrop(active.id as string, over.id as string);
+    }
+    boardBeforeDragRef.current = null;
     setActiveTaskId(null);
     setOverId(null);
+    setShake(false);
   };
 
-  // check if column should be highlighted
   const isColumnHighlighted = (columnId: TaskStatus): boolean => {
     if (!overId) return false;
-    // if drag to column itself
     if (overId === columnId) return true;
-    // if drag to card in column
-    return taskStatusMap[overId] === columnId;
+    return board.taskStatusMap[overId] === columnId;
   };
+
+  const placeholderClass =
+    "h-20 shrink-0 rounded-md border-2 border-dashed border-blue-400 bg-blue-50 dark:bg-blue-900/20";
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col px-4 pb-4 pt-2 md:px-6">
@@ -223,6 +237,8 @@ export function BoardPage() {
         <Button type="primary">{t("addTask")}</Button>
       </div>
       <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragCancel={handleDragCancel}
@@ -232,7 +248,7 @@ export function BoardPage() {
           {COLUMNS.map((column) => {
             const columnTasks = getTasksByStatus(column.id);
             const isHighlighted =
-              activeTaskId && isColumnHighlighted(column.id);
+              Boolean(activeTaskId) && isColumnHighlighted(column.id);
 
             return (
               <DroppableColumn
@@ -241,7 +257,7 @@ export function BoardPage() {
                 isDropTarget={true}
                 className={
                   isHighlighted
-                    ? "ring-2 ring-blue-400 ring-offset-2 dark:ring-offset-gray-900"
+                    ? "ring-2 ring-blue-50 ring-offset-2 dark:ring-offset-gray-900"
                     : ""
                 }
               >
@@ -256,21 +272,26 @@ export function BoardPage() {
                     {column.title} ({columnTasks.length})
                   </div>
                   <SortableContext
-                    items={columnTasks.map((t) => t.id)}
+                    items={columnTasks.map((tk) => tk.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="flex flex-1 flex-col gap-2">
+                    <div className="flex min-h-[4.5rem] flex-1 flex-col gap-2">
+                      {columnTasks.length === 0 &&
+                        activeTaskId &&
+                        overId === column.id && (
+                          <div className={placeholderClass} />
+                        )}
+
                       {columnTasks.map((task) => {
-                        // show placeholder when drag to same column
                         const showPlaceholder =
-                          activeTaskId &&
+                          Boolean(activeTaskId) &&
                           overId === task.id &&
                           activeTaskId !== task.id;
 
                         return (
                           <div key={task.id} className="flex flex-col gap-2">
                             {showPlaceholder && (
-                              <div className="h-20 rounded-md border-2 border-dashed border-blue-400 bg-blue-50 dark:bg-blue-900/20" />
+                              <div className={placeholderClass} />
                             )}
                             <DraggableCard id={task.id}>
                               <TaskCard
@@ -283,11 +304,11 @@ export function BoardPage() {
                           </div>
                         );
                       })}
-                      {/* show placeholder when drag to column but no card */}
-                      {activeTaskId &&
+
+                      {Boolean(activeTaskId) &&
                         overId === column.id &&
-                        columnTasks.length === 0 && (
-                          <div className="h-20 rounded-md border-2 border-dashed border-blue-400 bg-blue-50 dark:bg-blue-900/20" />
+                        columnTasks.length > 0 && (
+                          <div className={placeholderClass} />
                         )}
                     </div>
                   </SortableContext>
@@ -297,10 +318,23 @@ export function BoardPage() {
           })}
         </div>
 
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay
+          dropAnimation={{
+            duration: 220,
+            easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
+            sideEffects: defaultDropAnimationSideEffects({
+              styles: {
+                active: { opacity: "0.35" },
+              },
+            }),
+          }}
+        >
           {activeTaskId ? (
             <div
-              className={clsx("pointer-events-none max-w-md cursor-grabbing", shake && "task-card-balance")}
+              className={clsx(
+                "pointer-events-none w-full max-w-full cursor-grabbing",
+                shake && "task-card-balance",
+              )}
               onAnimationEnd={() => setShake(false)}
             >
               <TaskCard

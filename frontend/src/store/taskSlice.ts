@@ -34,7 +34,7 @@ export const taskSlice = createSlice({
         tasks: [],
     },
     reducers: {
-        createTask: (state, action) => {
+        createTask: (_state, action) => {
             //state.tasks.push(action.payload);
             console.log(action.payload);
         },

@@ -1,24 +1,37 @@
 {
   "name": "mini-board-backend",
   "version": "1.0.0",
-  "description": "Fastify + TypeScript backend (minimal template)",
+  "description": "mini-board backend service",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "test": "npm run prisma:generate && vitest run",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "Jeremy Zhou",
   "license": "MIT",
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/sensible": "^6.0.0",
+    "@prisma/client": "^6.19.3",
     "fastify": "^5.8.4",
-    "@fastify/sensible": "^6.0.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^25.5.2",
+    "@types/node": "^25.5.0",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
+    "prisma": "^6.19.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"

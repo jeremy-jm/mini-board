@@ -1,33 +1,30 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
-
 export type TaskPriority = 'low' | 'medium' | 'high';
 
-export interface Member {
+export interface MemberDto {
   id: string;
   name: string;
   avatar: string;
 }
 
-export interface Task {
+export interface TaskDto {
   id: string;
   title: string;
   description: string;
   status: TaskStatus;
   order: number;
+  priority: TaskPriority;
+  dueDate: string | null;
   createdAt: string;
   updatedAt: string;
   assigneeId: string | null;
   assigneeName: string | null;
   assigneeAvatar: string | null;
-  priority: TaskPriority;
-  dueDate: string | null;
 }
 
-export interface TaskPayload {
-  title: string;
-  description: string;
+export interface ReorderItem {
+  id: string;
   status: TaskStatus;
-  assigneeId: string | null;
-  priority: TaskPriority;
-  dueDate: string | null;
+  order: number;
 }
+

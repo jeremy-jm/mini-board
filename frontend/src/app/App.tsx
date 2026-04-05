@@ -1,5 +1,4 @@
 import "./index.css";
-import { useTranslation } from "react-i18next";
 import { lazy, useId, Suspense } from "react";
 import i18n from "../i18n";
 
@@ -8,7 +7,6 @@ const BoardPage = lazy(() =>
 );
 
 export default function App() {
-  const { t } = useTranslation();
   const langId = useId();
 
   return (
