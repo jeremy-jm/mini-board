@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { useRef, useState } from "react";
 import { Alert, Button, Spin } from "antd";
@@ -6,11 +7,13 @@ import {
   optimisticReorder,
   replaceTasks,
   syncOrders,
+  updateTask,
+  createTask,
 } from "../../store/taskSlice";
 import { selectColumnsSorted } from "../../store/taskStatusSlice";
 import clsx from "clsx";
 import { TaskCard } from "../task/TaskCard";
-import type { TaskStatus, Task } from "../types/types";
+import type { TaskStatus, Task, TaskPayload } from "../types/types";
 import { applyTasksAfterDrop } from "./taskReorder";
 import { useBoardInitialLoad } from "./useBoardInitialLoad";
 
@@ -32,6 +35,11 @@ import {
   type DragCancelEvent,
 } from "../dnd/dnd";
 
+const TaskFormModal = lazy(() =>
+  import("../task/TaskFormModal").then((module) => ({
+    default: module.TaskFormModal,
+  })),
+);
 function tasksUnchanged(before: Task[], after: Task[]): boolean {
   if (before.length !== after.length) return false;
   const nextById = new Map(after.map((t) => [t.id, t]));
@@ -47,7 +55,9 @@ export function BoardPage() {
   const { bootstrapping, bootstrapError, retry } = useBoardInitialLoad();
 
   const columns = useAppSelector(selectColumnsSorted);
-  const { tasks } = useAppSelector((state) => state.tasks);
+  const { tasks, members, loading, submitting } = useAppSelector(
+    (state) => state.tasks,
+  );
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -56,6 +66,10 @@ export function BoardPage() {
   const [shake, setShake] = useState(false);
   const boardBeforeDragRef = useRef<Task[] | null>(null);
   const lastNonSelfOverIdRef = useRef<string | null>(null);
+
+  // From Modal
+  const [openTaskFormModal, setOpenTaskFormModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -74,6 +88,15 @@ export function BoardPage() {
 
   const getActiveTask = () =>
     displayTasks.find((task) => task.id === activeTaskId);
+
+  const handleSubmitTask = (payload: TaskPayload) => {
+    if (editingTask) {
+      dispatch(updateTask({ id: editingTask.id, task: payload })).unwrap();
+    } else {
+      dispatch(createTask(payload));
+    }
+    setOpenTaskFormModal(false);
+  };
 
   // ----- DnD Event Handlers Start -----
   const handleDragStart = (event: DragStartEvent) => {
@@ -218,7 +241,13 @@ export function BoardPage() {
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
           {t("appName")}
         </h1>
-        <Button type="primary">{t("addTask")}</Button>
+        <Button
+          type="primary"
+          onClick={() => setOpenTaskFormModal(true)}
+          loading={submitting}
+        >
+          {t("addTask")}
+        </Button>
       </div>
       <DndContext
         sensors={sensors}
@@ -253,7 +282,7 @@ export function BoardPage() {
                   }`}
                 >
                   <div className="mb-3 text-lg font-semibold text-gray-700 dark:text-gray-200">
-                    {column.title} ({columnTasks.length})
+                    {t(column.title)} ({columnTasks.length})
                   </div>
                   <SortableContext
                     items={columnTasks.map((tk) => tk.id)}
@@ -271,7 +300,10 @@ export function BoardPage() {
                           <DraggableCard id={task.id}>
                             <TaskCard
                               task={task}
-                              onEdit={() => {}}
+                              onEdit={() => {
+                                setEditingTask(task);
+                                setOpenTaskFormModal(true);
+                              }}
                               onDelete={() => {}}
                             />
                           </DraggableCard>
@@ -313,6 +345,20 @@ export function BoardPage() {
           ) : null}
         </DragOverlay>
       </DndContext>
+      {openTaskFormModal ? (
+        <Suspense fallback={<Spin />}>
+          <TaskFormModal
+            open={openTaskFormModal}
+            onClose={() => setOpenTaskFormModal(false)}
+            task={editingTask}
+            onSubmit={(payload) => {
+              void handleSubmitTask(payload);
+            }}
+            loading={submitting}
+            members={members}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

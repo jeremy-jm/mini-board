@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* eslint-disable */
 @custom-variant dark (&:where(.dark, .dark *));
 
 *,

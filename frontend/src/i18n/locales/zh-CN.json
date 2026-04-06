@@ -15,5 +15,15 @@
   "priority": "优先级",
   "todo": "待办",
   "inProgress": "进行中",
-  "done": "已完成"
+  "done": "已完成",
+  "save": "保存",
+  "low": "低",
+  "medium": "中",
+  "high": "高",
+  "title": "标题",
+  "description": "描述",
+  "assignee": "指派人",
+  "status": "状态",
+  "createdAt": "创建时间",
+  "updatedAt": "更新时间"
 }

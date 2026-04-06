@@ -22,3 +22,9 @@ export function toUtcIso(localValue: string | null): string | null {
   return dayjs(localValue).utc().toISOString();
 }
 
+/** plus one hour, and set minute to 0 */
+export function getInitialDueDate(task: Task | undefined): dayjs.Dayjs | null {
+  if (task == null) return dayjs().add(1, 'hour').startOf('minute');
+  if (task.dueDate) return dayjs(task.dueDate);
+  return null;
+}

@@ -15,5 +15,15 @@
   "priority": "Priority",
   "todo": "Todo",
   "inProgress": "In progress",
-  "done": "Done"
+  "done": "Done",
+  "save": "Save",
+  "low": "Low",
+  "medium": "Medium",
+  "high": "High",
+  "title": "Title",
+  "description": "Description",
+  "assignee": "Assignee",
+  "status": "Status",
+  "createdAt": "Created at",
+  "updatedAt": "Updated at"
 }
