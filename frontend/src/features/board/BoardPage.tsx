@@ -262,6 +262,12 @@ export function BoardPage() {
             const columnTasks = getTasksByStatus(column.id);
             const isHighlighted =
               Boolean(activeTaskId) && isColumnHighlighted(column.id);
+            // in order to map the title to the i18n key, remove all the spaces and capitalize the first letter
+            const columnTitle = t(
+              column.title
+                .replace(/\s+/g, "")
+                .replace(/^./, (c) => c.toLowerCase()),
+            );
 
             return (
               <DroppableColumn
@@ -271,7 +277,7 @@ export function BoardPage() {
                 className={
                   isHighlighted
                     ? "ring-2 ring-blue-50 ring-offset-2 dark:ring-offset-gray-900"
-                    : ""
+                    : "ring-2 ring-gray-300 dark:ring-gray-600"
                 }
               >
                 <div
@@ -282,7 +288,7 @@ export function BoardPage() {
                   }`}
                 >
                   <div className="mb-3 text-lg font-semibold text-gray-700 dark:text-gray-200">
-                    {t(column.title)} ({columnTasks.length})
+                    {t(columnTitle)} ({columnTasks.length})
                   </div>
                   <SortableContext
                     items={columnTasks.map((tk) => tk.id)}

@@ -93,6 +93,15 @@ async function main() {
       order: 4,
       priority: "medium",
     },
+    {
+      id: "seed-task-6",
+      title: "已过期的任务测试",
+      description: "时间变红",
+      status: "todo",
+      order: 5,
+      priority: "high",
+      dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    },
   ];
 
   for (const task of tasks) {

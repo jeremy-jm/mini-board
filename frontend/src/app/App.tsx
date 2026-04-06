@@ -1,6 +1,9 @@
 import "./index.css";
-import { lazy, useId, Suspense } from "react";
-import i18n from "../i18n";
+import { lazy, useId, Suspense, use } from "react";
+
+import { useTranslation } from "react-i18next";
+import { useThemeMode } from "../theme/ThemeProvider";
+import { setLanguage } from "../lib/userPreferences";
 
 const BoardPage = lazy(() =>
   import("../features/board/BoardPage").then((m) => ({ default: m.BoardPage })),
@@ -8,6 +11,8 @@ const BoardPage = lazy(() =>
 
 export default function App() {
   const langId = useId();
+  const { mode, toggle } = useThemeMode();
+  const { i18n, t } = useTranslation();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-950">
@@ -21,6 +26,7 @@ export default function App() {
             value={i18n.language}
             onChange={(event) => {
               const lng = event.target.value as "zh-CN" | "en";
+              setLanguage(lng);
               void i18n.changeLanguage(lng);
             }}
             className="h-9 cursor-pointer appearance-none rounded border border-gray-300 bg-white py-0 pl-2 pr-6 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
@@ -28,15 +34,18 @@ export default function App() {
             <option value="zh-CN">中文</option>
             <option value="en">English</option>
           </select>
+          <span className="absolute right-2 pointer-events-none text-gray-500 dark:text-gray-400">
+            ▼
+          </span>
         </div>
         <button
           type="button"
           className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-lg text-gray-900 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-800"
-          onClick={() => {
-            document.documentElement.classList.toggle("dark");
-          }}
+          onClick={toggle}
+          aria-label={mode === "light" ? t("themeToDark") : t("themeToLight")}
+          title={mode === "light" ? t("themeToDark") : t("themeToLight")}
         >
-          Sk
+          {mode === "dark" ? "🌙" : "☀️"}
         </button>
       </header>
       <main className="flex min-h-0 flex-1 flex-col">
