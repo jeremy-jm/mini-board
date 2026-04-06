@@ -22,7 +22,7 @@ export function DroppableColumn({
       ref={setNodeRef}
       className={clsx(
         "flex h-full min-h-0 flex-col",
-        isDropTarget && "rounded-md ring-2 ring-blue-400",
+        isDropTarget && "rounded-md ring-2 ring-zinc-300",
         className,
       )}
     >

@@ -176,6 +176,7 @@ export function BoardPage() {
   };
   // ----- DnD Event Handlers End -----
 
+  // Highlight Column Preview
   const isColumnHighlighted = (columnId: TaskStatus): boolean => {
     if (!overId) return false;
     if (overId === columnId) return true;
@@ -247,7 +248,7 @@ export function BoardPage() {
                 <div
                   className={`flex min-h-0 flex-1 flex-col rounded-md p-3 transition-all duration-200 ${
                     isHighlighted
-                      ? "bg-blue-50 dark:bg-blue-900/30"
+                      ? "bg-blue-100 dark:bg-sky-600/50"
                       : "bg-gray-200 dark:bg-gray-800/80"
                   }`}
                 >
@@ -269,8 +270,7 @@ export function BoardPage() {
                         <div key={task.id} className="flex flex-col gap-2">
                           <DraggableCard id={task.id}>
                             <TaskCard
-                              id={task.id}
-                              title={task.title}
+                              task={task}
                               onEdit={() => {}}
                               onDelete={() => {}}
                             />
@@ -305,8 +305,7 @@ export function BoardPage() {
               onAnimationEnd={() => setShake(false)}
             >
               <TaskCard
-                id={activeTaskId}
-                title={getActiveTask()?.title}
+                task={getActiveTask() as Task}
                 onEdit={() => {}}
                 onDelete={() => {}}
               />

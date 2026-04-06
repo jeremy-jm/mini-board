@@ -10,7 +10,7 @@ export default function App() {
   const langId = useId();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col text-gray-900 dark:text-gray-100">
+    <div className="flex min-h-0 flex-1 flex-col text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-950">
       <header className="flex shrink-0 justify-end gap-2 px-4 pt-3 pb-2">
         <label htmlFor={langId} className="sr-only">
           Language

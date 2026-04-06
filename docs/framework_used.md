@@ -8,6 +8,10 @@ https://dndkit.com/quickstart
 
 https://tailwind.org.cn/docs/width
 
+### Tailwind - Colors
+
+https://tailwindcss.zhcndoc.com/docs/colors?utm_source=chatgpt.com
+
 ## Catalyst
 
 https://catalyst.tailwindui.com/docs/auth-layout

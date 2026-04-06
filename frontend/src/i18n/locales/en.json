@@ -1,8 +1,19 @@
 {
-    "appName": "Mini Board",
-    "addTask": "Add task",
-    "boardLoading": "Loading board…",
-    "boardLoadError": "Failed to load board",
-    "retry": "Retry",
-    "unknownError": "Unknown error"
+  "appName": "Mini Board",
+  "addTask": "Add task",
+  "boardLoading": "Loading board…",
+  "boardLoadError": "Failed to load board",
+  "retry": "Retry",
+  "unknownError": "Unknown error",
+  "edit": "Edit",
+  "delete": "Delete",
+  "deleteConfirm": "Are you sure you want to delete this task?",
+  "confirmOk": "Yes",
+  "cancel": "Cancel",
+  "dueDate": "Due date",
+  "overdue": "Overdue",
+  "priority": "Priority",
+  "todo": "Todo",
+  "inProgress": "In progress",
+  "done": "Done"
 }
