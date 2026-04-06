@@ -10,7 +10,7 @@ export async function registerTaskRoutes(
   service: TaskService,
 ) {
 
-    app.get("/task-statuses", async () => service.listTaskStatuses());
+  app.get("/task-statuses", async () => ({ data: await service.listTaskStatuses() }));
 
   app.get("/tasks", async () => ({ data: await service.listTasks() }));
 

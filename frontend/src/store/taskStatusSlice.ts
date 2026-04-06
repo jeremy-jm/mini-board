@@ -1,5 +1,8 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSelector, createSlice } from "@reduxjs/toolkit";
 import type { TaskStatus } from "../features/types/types";
+import { apiClient } from "../lib/api";
+
+import type { RootState } from "./store";
 
 export interface TaskStatusColumnDto {
   id: TaskStatus;
@@ -12,12 +15,16 @@ export const fetchTaskStatuses = createAsyncThunk<
   void,
   { rejectValue: string }
 >("taskStatus/fetchAll", async (_, { rejectWithValue }) => {
-  const res = await fetch("/api/task-statuses");
-  if (!res.ok) {
-    const text = await res.text();
-    return rejectWithValue(text || res.statusText);
+  try {
+    const response = await apiClient.get<{ data: TaskStatusColumnDto[] }>(
+      "/task-statuses",
+    );
+    return response.data.data;
+  } catch (error) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Failed to fetch task statuses",
+    );
   }
-  return res.json() as Promise<TaskStatusColumnDto[]>;
 });
 
 type LoadState = "idle" | "loading" | "succeeded" | "failed";
@@ -51,3 +58,9 @@ const taskStatusSlice = createSlice({
 });
 
 export default taskStatusSlice.reducer;
+
+// Memoized selector - only returns new array when items actually change
+export const selectColumnsSorted = createSelector(
+  [(state: RootState) => state.taskStatus.items],
+  (items) => [...items].sort((a, b) => a.sortOrder - b.sortOrder),
+);

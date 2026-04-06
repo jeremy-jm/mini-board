@@ -7,6 +7,7 @@ import {
   replaceTasks,
   syncOrders,
 } from "../../store/taskSlice";
+import { selectColumnsSorted } from "../../store/taskStatusSlice";
 import clsx from "clsx";
 import { TaskCard } from "../task/TaskCard";
 import type { TaskStatus, Task } from "../types/types";
@@ -45,9 +46,7 @@ export function BoardPage() {
   const dispatch = useAppDispatch();
   const { bootstrapping, bootstrapError, retry } = useBoardInitialLoad();
 
-  const columns = useAppSelector((s) =>
-    [...s.taskStatus.items].sort((a, b) => a.sortOrder - b.sortOrder),
-  );
+  const columns = useAppSelector(selectColumnsSorted);
   const { tasks } = useAppSelector((state) => state.tasks);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -141,7 +140,7 @@ export function BoardPage() {
   if (bootstrapping) {
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center px-4 pb-4 pt-2 md:px-6">
-        <Spin size="large" tip={t("boardLoading")} />
+        <Spin size="large" description={t("boardLoading")} />
       </div>
     );
   }

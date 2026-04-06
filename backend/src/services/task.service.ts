@@ -123,11 +123,19 @@ export function createPrismaTaskService(prisma: PrismaClient): TaskService {
       await prisma.task.delete({ where: { id } });
     },
 
-    async reorderTasks(items) {
-      await prisma.task.updateMany({
-        where: { id: { in: items.map((item) => item.id) } },
-        data: { order: { increment: 1 } },
-      });
+    async reorderTasks(items: ReorderItem[]) {
+      // Use transaction to update all tasks atomically
+      await prisma.$transaction(
+        items.map((item) =>
+          prisma.task.update({
+            where: { id: item.id },
+            data: {
+              status: item.status,
+              order: item.order,
+            },
+          }),
+        ),
+      );
     },
   };
 }
