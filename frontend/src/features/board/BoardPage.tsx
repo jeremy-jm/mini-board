@@ -18,7 +18,6 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  closestCorners,
   defaultDropAnimationSideEffects,
   useSensor,
   useSensors,
@@ -26,6 +25,7 @@ import {
   verticalListSortingStrategy,
   DroppableColumn,
   DraggableCard,
+  boardCollisionDetection,
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
@@ -51,41 +51,81 @@ export function BoardPage() {
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  // clac preview tasks
+  const [previewTasks, setPreviewTasks] = useState<Task[] | null>(null);
   const [shake, setShake] = useState(false);
   const boardBeforeDragRef = useRef<Task[] | null>(null);
+  const lastNonSelfOverIdRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      activationConstraint: { distance: 1 },
     }),
   );
 
   const columnIds = columns.map((c) => c.id);
 
+  const displayTasks = previewTasks ?? tasks;
+
   const getTasksByStatus = (status: TaskStatus): Task[] =>
-    tasks
+    displayTasks
       .filter((task) => task.status === status)
       .sort((a, b) => a.order - b.order);
 
-  const getActiveTask = () => tasks.find((task) => task.id === activeTaskId);
+  const getActiveTask = () =>
+    displayTasks.find((task) => task.id === activeTaskId);
 
   // ----- DnD Event Handlers Start -----
   const handleDragStart = (event: DragStartEvent) => {
-    boardBeforeDragRef.current = structuredClone(tasks);
+    const snap = structuredClone(tasks);
+    boardBeforeDragRef.current = snap;
+    setPreviewTasks(snap);
+    lastNonSelfOverIdRef.current = null;
     setActiveTaskId(event.active.id as string);
     setOverId(null);
     setShake(true);
   };
 
+  const resolveEffectiveOverId = (
+    activeId: string,
+    over: DragOverEvent["over"],
+  ): string | null => {
+    if (!over) return null;
+    const oid = over.id as string;
+    if (oid !== activeId) return oid;
+    return lastNonSelfOverIdRef.current;
+  };
+
   const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event;
-    setOverId(over ? (over.id as string) : null);
+    const { active, over } = event;
+    const activeId = active.id as string;
+    const base = boardBeforeDragRef.current;
+    if (!over) {
+      setOverId(null);
+      if (base) setPreviewTasks(structuredClone(base));
+      return;
+    }
+    const oid = over.id as string;
+    setOverId(oid);
+    if (oid !== activeId) {
+      lastNonSelfOverIdRef.current = oid;
+    }
+    if (!base) return;
+    const effectiveOverId = resolveEffectiveOverId(activeId, over);
+    if (!effectiveOverId || effectiveOverId === activeId) {
+      setPreviewTasks(structuredClone(base));
+      return;
+    }
+    setPreviewTasks(
+      applyTasksAfterDrop(base, activeId, effectiveOverId, columnIds),
+    );
   };
 
   const handleDragCancel = (_event: DragCancelEvent) => {
     const snap = boardBeforeDragRef.current;
     if (snap) dispatch(replaceTasks(snap));
     boardBeforeDragRef.current = null;
+    setPreviewTasks(null);
     setActiveTaskId(null);
     setOverId(null);
     setShake(false);
@@ -95,19 +135,27 @@ export function BoardPage() {
     const { active, over } = event;
     const snapshot = boardBeforeDragRef.current;
     boardBeforeDragRef.current = null;
+    setPreviewTasks(null);
     setActiveTaskId(null);
     setOverId(null);
     setShake(false);
 
-    if (!over) {
+    const activeId = active.id as string;
+    let dropTargetId = over?.id as string | undefined;
+    if (!dropTargetId || dropTargetId === activeId) {
+      dropTargetId = lastNonSelfOverIdRef.current ?? undefined;
+    }
+    lastNonSelfOverIdRef.current = null;
+
+    if (!dropTargetId) {
       if (snapshot) dispatch(replaceTasks(snapshot));
       return;
     }
 
     const nextTasks = applyTasksAfterDrop(
       tasks,
-      active.id as string,
-      over.id as string,
+      activeId,
+      dropTargetId,
       columnIds,
     );
     if (tasksUnchanged(tasks, nextTasks)) return;
@@ -131,7 +179,7 @@ export function BoardPage() {
   const isColumnHighlighted = (columnId: TaskStatus): boolean => {
     if (!overId) return false;
     if (overId === columnId) return true;
-    return tasks.find((task) => task.id === overId)?.status === columnId;
+    return displayTasks.find((task) => task.id === overId)?.status === columnId;
   };
 
   const placeholderClass =
@@ -173,7 +221,7 @@ export function BoardPage() {
       </div>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={boardCollisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragCancel={handleDragCancel}
@@ -217,34 +265,18 @@ export function BoardPage() {
                           <div className={placeholderClass} />
                         )}
 
-                      {columnTasks.map((task) => {
-                        const showPlaceholder =
-                          Boolean(activeTaskId) &&
-                          overId === task.id &&
-                          activeTaskId !== task.id;
-
-                        return (
-                          <div key={task.id} className="flex flex-col gap-2">
-                            {showPlaceholder && (
-                              <div className={placeholderClass} />
-                            )}
-                            <DraggableCard id={task.id}>
-                              <TaskCard
-                                id={task.id}
-                                title={task.title}
-                                onEdit={() => {}}
-                                onDelete={() => {}}
-                              />
-                            </DraggableCard>
-                          </div>
-                        );
-                      })}
-
-                      {Boolean(activeTaskId) &&
-                        overId === column.id &&
-                        columnTasks.length > 0 && (
-                          <div className={placeholderClass} />
-                        )}
+                      {columnTasks.map((task) => (
+                        <div key={task.id} className="flex flex-col gap-2">
+                          <DraggableCard id={task.id}>
+                            <TaskCard
+                              id={task.id}
+                              title={task.title}
+                              onEdit={() => {}}
+                              onDelete={() => {}}
+                            />
+                          </DraggableCard>
+                        </div>
+                      ))}
                     </div>
                   </SortableContext>
                 </div>

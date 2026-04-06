@@ -4,7 +4,9 @@ export {
   DndContext,
   DragOverlay,
   PointerSensor,
+  closestCenter,
   closestCorners,
+  pointerWithin,
   defaultDropAnimationSideEffects,
   useSensor,
   useSensors,
@@ -24,3 +26,4 @@ export type {
 
 export { DroppableColumn } from "./DroppableColumn";
 export { DraggableCard } from "./DraggableCard";
+export { boardCollisionDetection } from "./dndBoardCollisioin";
