@@ -61,7 +61,11 @@ export function TaskFormModal({
           })
         }
       >
-        <Form.Item name="title" label={t("title")} rules={[{ required: true }]}>
+        <Form.Item
+          name="title"
+          label={t("title")}
+          rules={[{ required: true, min: 2 }]}
+        >
           <Input />
         </Form.Item>
         <Form.Item name="description" label={t("description")}>
