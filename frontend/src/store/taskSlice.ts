@@ -64,8 +64,8 @@ export const updateTask = createAsyncThunk(
 export const deleteTask = createAsyncThunk(
   "tasks/deleteTask",
   async (id: string) => {
-    const response = await apiClient.delete<{ data: Task }>(`/tasks/${id}`);
-    return response.data.data;
+    await apiClient.delete<{ data: Task }>(`/tasks/${id}`);
+    return id;
   },
 );
 
@@ -166,7 +166,7 @@ export const taskSlice = createSlice({
       .addCase(deleteTask.fulfilled, (state, action) => {
         state.submitting = false;
         state.tasks = state.tasks.filter(
-          (task) => task.id !== action.payload.id,
+          (task) => task.id !== action.payload,
         );
       })
       .addCase(deleteTask.rejected, (state, action) => {

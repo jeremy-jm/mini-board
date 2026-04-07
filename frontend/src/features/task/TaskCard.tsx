@@ -1,5 +1,5 @@
 import { DeleteOutlined } from "@ant-design/icons";
-import { Avatar, Button, Popconfirm, Tag } from "antd";
+import { Avatar, Button, message, Popconfirm, Tag } from "antd";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatDateTime, isTaskOverdue } from "../../lib/date";
@@ -8,7 +8,7 @@ import type { Task } from "../types/types";
 interface Props {
   task: Task;
   onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
+  onDelete: (taskId: string) => Promise<void>;
 }
 
 function TaskCardComponent({ task, onEdit, onDelete }: Props) {
@@ -60,15 +60,20 @@ function TaskCardComponent({ task, onEdit, onDelete }: Props) {
         <Popconfirm
           title={t("deleteConfirm")}
           placement="top"
-          okText={t("confirmOk")}
           cancelText={t("cancel")}
-          onConfirm={() => onDelete(task.id)}
+          okText={t("confirmOk")}
+          onConfirm={async () => {
+            await onDelete(task.id);
+            message.success(t("deleteSuccess"));
+          }}
         >
           <Button
             danger
             type="text"
             size="small"
             icon={<DeleteOutlined />}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
             aria-label={t("delete")}
             title={t("delete")}
           />

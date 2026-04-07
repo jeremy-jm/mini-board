@@ -33,6 +33,7 @@ export function TaskFormModal({
       title={task ? t("edit") : t("addTask")}
       footer={null}
       afterOpenChange={(visible) => {
+        form.resetFields();
         if (visible) {
           form.setFieldsValue({
             title: task?.title,
@@ -41,8 +42,6 @@ export function TaskFormModal({
             priority: task?.priority,
             dueDate: getInitialDueDate(task),
           });
-        } else {
-          form.resetFields();
         }
       }}
     >

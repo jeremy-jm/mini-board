@@ -9,6 +9,7 @@ import {
   syncOrders,
   updateTask,
   createTask,
+  deleteTask,
 } from "../../store/taskSlice";
 import { selectColumnsSorted } from "../../store/taskStatusSlice";
 import clsx from "clsx";
@@ -93,6 +94,12 @@ export function BoardPage() {
     } else {
       dispatch(createTask(payload));
     }
+    setEditingTask(undefined);
+    setOpenTaskFormModal(false);
+  };
+
+  const handleCloseTaskFormModal = () => {
+    setEditingTask(undefined);
     setOpenTaskFormModal(false);
   };
 
@@ -241,7 +248,10 @@ export function BoardPage() {
         </h1>
         <Button
           type="primary"
-          onClick={() => setOpenTaskFormModal(true)}
+          onClick={() => {
+            setEditingTask(undefined);
+            setOpenTaskFormModal(true);
+          }}
           loading={submitting}
         >
           {t("addTask")}
@@ -304,11 +314,13 @@ export function BoardPage() {
                           <DraggableCard id={task.id}>
                             <TaskCard
                               task={task}
-                              onEdit={() => {
-                                setEditingTask(task);
+                              onEdit={(nextTask) => {
+                                setEditingTask(nextTask);
                                 setOpenTaskFormModal(true);
                               }}
-                              onDelete={() => {}}
+                              onDelete={async (taskId) => {
+                                await dispatch(deleteTask(taskId));
+                              }}
                             />
                           </DraggableCard>
                         </div>
@@ -343,17 +355,17 @@ export function BoardPage() {
               <TaskCard
                 task={getActiveTask() as Task}
                 onEdit={() => {}}
-                onDelete={() => {}}
+                onDelete={() => Promise.resolve()}
               />
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
       {openTaskFormModal ? (
-        <Suspense fallback={<Spin />}>
+        <Suspense fallback={<Spin description={t("loading")} />}>
           <TaskFormModal
             open={openTaskFormModal}
-            onClose={() => setOpenTaskFormModal(false)}
+            onClose={handleCloseTaskFormModal}
             task={editingTask}
             onSubmit={(payload) => {
               void handleSubmitTask(payload);
