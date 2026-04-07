@@ -53,12 +53,6 @@ export function getSystemPrefersDark(): boolean {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-export function getInitialTheme(): StoredTheme {
-    const stored = readTheme();
-    if (stored) return stored;
-    return getSystemPrefersDark() ? "dark" : "light";
-}
-
 
 export function setTheme(theme: StoredTheme) {
     writeTheme(theme);

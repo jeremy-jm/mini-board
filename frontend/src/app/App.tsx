@@ -1,5 +1,5 @@
 import "./index.css";
-import { lazy, useId, Suspense, use } from "react";
+import { lazy, useId, Suspense } from "react";
 
 import { useTranslation } from "react-i18next";
 import { useThemeMode } from "../theme/ThemeProvider";

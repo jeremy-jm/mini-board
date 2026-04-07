@@ -6,8 +6,6 @@ import { createPrismaMemberService, type MemberService } from './services/member
 import { createPrismaTaskService, type TaskService } from './services/task.service.js';
 import { registerMemberRoutes } from './routes/members.js';
 import { registerTaskRoutes } from './routes/tasks.js';
-import { registerTaskStatusRoutes } from './routes/task.status.js';
-import { date } from 'zod';
 
 export interface AppDeps {
   service?: TaskService;

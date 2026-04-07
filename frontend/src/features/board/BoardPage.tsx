@@ -55,9 +55,7 @@ export function BoardPage() {
   const { bootstrapping, bootstrapError, retry } = useBoardInitialLoad();
 
   const columns = useAppSelector(selectColumnsSorted);
-  const { tasks, members, loading, submitting } = useAppSelector(
-    (state) => state.tasks,
-  );
+  const { tasks, members, submitting } = useAppSelector((state) => state.tasks);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);

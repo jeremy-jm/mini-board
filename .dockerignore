@@ -1,0 +1,5 @@
+# Reduce build context for root-level Dockerfiles (e.g. nginx/Dockerfile).
+**/node_modules
+**/dist
+.git
+.gitignore
