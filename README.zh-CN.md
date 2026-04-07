@@ -149,13 +149,6 @@ docker compose -f docker-compose.prd.yml up --build -d
    - 分支标签（branch tag）
    - 默认分支下的 `latest`
 
-## README 中建议读者了解的其他信息
-
-- **环境变量**：后端依赖 `DATABASE_URL`；容器内使用主机名 `postgres` 的数据库连接串由 Compose 注入，在宿主机直接跑 Prisma 时请使用 `localhost`。  
-- **Prisma**：若出现 `P1001 Can't reach database server`，请确认数据库进程已就绪、连接串正确；Docker 场景下需等待 `postgres` 健康检查通过后再启动依赖它的服务。  
-- **提交与评审**：作业要求关注代码质量、交互（拖拽、loading、错误）、README 可运行说明与性能；本仓库建议保持清晰的 Git 提交说明。  
-- **可选演示**：可录制短视频演示创建/拖拽/编辑/删除与刷新后数据仍在。
-
 ## 相关文件
 
 | 文件 | 内容 |

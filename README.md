@@ -150,13 +150,6 @@ This repository includes two workflows:
    - branch tag (for branch builds)
    - `latest` for default branch
 
-## Other notes
-
-- **Env:** backend needs `DATABASE_URL`. Inside Compose, the hostname is `postgres`; on the host for Prisma CLI, use `localhost`.
-- **Prisma P1001:** ensure Postgres is up and the URL is correct; in Docker, wait until the `postgres` service is healthy before dependents start.
-- **Review:** assignment cares about code quality, smooth DnD, loading/errors, runnable README, and avoiding needless re-renders—keep commits and messages clear.
-- **Optional:** short screen recording of create / drag / edit / delete / refresh persistence.
-
 ## Related files
 
 | File                                               | Purpose                               |
