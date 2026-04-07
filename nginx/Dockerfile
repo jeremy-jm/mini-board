@@ -10,8 +10,9 @@ RUN npm ci
 COPY frontend/ ./
 
 # Same-origin API in browser: axios baseURL /api -> nginx proxies to backend
-ARG VITE_API_BASE_URL=/api
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Can be overridden via --build-arg VITE_API_BASE_URL=...
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
 
 RUN npm run build
 

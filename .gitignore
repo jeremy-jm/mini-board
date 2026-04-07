@@ -5,3 +5,8 @@
 my-draft.md
 
 /backend/prisma/migrations
+
+# Environment variables
+.env
+.env.*
+ques
