@@ -109,6 +109,7 @@ export function TaskFormModal({
               label: t(value),
               value: value,
             }))}
+            defaultValue={"medium"}
           />
         </Form.Item>
         <Form.Item name="dueDate" label={t("dueDate")}>
