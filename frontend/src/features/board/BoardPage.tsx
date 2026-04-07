@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Button, Spin } from "antd";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
@@ -33,7 +33,6 @@ import {
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
-  type DragCancelEvent,
 } from "../dnd/dnd";
 
 const TaskFormModal = lazy(() =>
@@ -56,11 +55,13 @@ export function BoardPage() {
   const { bootstrapping, bootstrapError, retry } = useBoardInitialLoad();
 
   const columns = useAppSelector(selectColumnsSorted);
-  const { tasks, members, submitting } = useAppSelector((state) => state.tasks);
+  const tasks = useAppSelector((state) => state.tasks.tasks);
+  const members = useAppSelector((state) => state.tasks.members);
+  const submitting = useAppSelector((state) => state.tasks.submitting);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  // clac preview tasks
+  // Keep an in-memory preview while dragging for smoother visual feedback.
   const [previewTasks, setPreviewTasks] = useState<Task[] | null>(null);
   const [shake, setShake] = useState(false);
   const boardBeforeDragRef = useRef<Task[] | null>(null);
@@ -80,10 +81,22 @@ export function BoardPage() {
 
   const displayTasks = previewTasks ?? tasks;
 
-  const getTasksByStatus = (status: TaskStatus): Task[] =>
-    displayTasks
-      .filter((task) => task.status === status)
-      .sort((a, b) => a.order - b.order);
+  const tasksByStatus = useMemo(() => {
+    const grouped: Record<TaskStatus, Task[]> = {
+      todo: [],
+      in_progress: [],
+      done: [],
+    };
+    for (const task of displayTasks) {
+      grouped[task.status].push(task);
+    }
+    grouped.todo.sort((a, b) => a.order - b.order);
+    grouped.in_progress.sort((a, b) => a.order - b.order);
+    grouped.done.sort((a, b) => a.order - b.order);
+    return grouped;
+  }, [displayTasks]);
+
+  const getTasksByStatus = (status: TaskStatus): Task[] => tasksByStatus[status];
 
   const getActiveTask = () =>
     displayTasks.find((task) => task.id === activeTaskId);
@@ -149,7 +162,7 @@ export function BoardPage() {
     );
   };
 
-  const handleDragCancel = (_event: DragCancelEvent) => {
+  const handleDragCancel = () => {
     const snap = boardBeforeDragRef.current;
     if (snap) dispatch(replaceTasks(snap));
     boardBeforeDragRef.current = null;
@@ -271,11 +284,10 @@ export function BoardPage() {
             const isHighlighted =
               Boolean(activeTaskId) && isColumnHighlighted(column.id);
             // in order to map the title to the i18n key, remove all the spaces and capitalize the first letter
-            const columnTitle = t(
+            const columnTitleKey =
               column.title
                 .replace(/\s+/g, "")
-                .replace(/^./, (c) => c.toLowerCase()),
-            );
+                .replace(/^./, (c) => c.toLowerCase());
 
             return (
               <DroppableColumn
@@ -296,7 +308,7 @@ export function BoardPage() {
                   }`}
                 >
                   <div className="mb-3 text-lg font-semibold text-gray-700 dark:text-gray-200">
-                    {t(columnTitle)} ({columnTasks.length})
+                    {t(columnTitleKey)} ({columnTasks.length})
                   </div>
                   <SortableContext
                     items={columnTasks.map((tk) => tk.id)}

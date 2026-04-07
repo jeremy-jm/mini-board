@@ -30,13 +30,12 @@ It targets the “minimal task board” assignment while going beyond must-haves
 | Backend | Node.js, Fastify 5 |
 | Validation | zod |
 | ORM / DB | Prisma, PostgreSQL |
+| Frontend tests | Vitest, Testing Library |
 | Backend tests | Vitest, supertest (route injection) |
 
 ## Architecture (brief)
 
 The board and forms use **Redux** for task state; **dnd-kit** powers drag-and-drop behind reusable draggable cards and droppable columns. The UI calls Fastify `/api` via **axios**; **Prisma** talks to PostgreSQL with stable per-column ordering via `status` + `order`. DnD uses optimistic updates; failed reorder rolls back only the affected columns and shows an error.
-
-More detail (folders, API shape, tests) is in [`my-draft.md`](my-draft.md).
 
 ## Bonus items (vs. assignment)
 
@@ -48,7 +47,7 @@ Extras (beyond minimum):
 - zh/en UI, light/dark theme (`class`-based, aligned with system `prefers-color-scheme` where applicable)  
 - Structured API errors, unified client error handling, skeleton loading, button loading states  
 - Performance: e.g. `React.memo`, column-scoped `useSelector`, Vite chunking, lazy-loaded board  
-- Backend Vitest (services + routes)
+- Frontend and backend Vitest (frontend unit tests + backend services/routes)
 
 ## How to use
 
@@ -83,7 +82,7 @@ Extras (beyond minimum):
 
 5. Open the URL Vite prints (usually `http://localhost:5173`). The dev server proxies API calls (see [`frontend/vite.config.ts`](frontend/vite.config.ts)).
 
-**Note:** If pulling Docker base images fails (e.g. in restricted networks), configure a registry mirror or use local Node + Postgres; see the “Docker image pull” section in [`my-draft.md`](my-draft.md).
+**Note:** If pulling Docker base images fails (e.g. in restricted networks), configure a registry mirror or use local Node + Postgres;
 
 ### Docker (development stack)
 
@@ -126,4 +125,3 @@ Data lives in Docker **volumes**, not in the image. Export/backup and `down -v` 
 | [`docker-compose.dev.yml`](docker-compose.dev.yml) | Dev: Vite + backend + Postgres |
 | [`docker-compose.prd.yml`](docker-compose.prd.yml) | Prod-like: nginx + backend + Postgres |
 | [`homework.md`](homework.md) | Original assignment text |
-| [`my-draft.md`](my-draft.md) | Design notes (layout, API, tests) |

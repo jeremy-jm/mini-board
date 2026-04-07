@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import { PrismaClient } from '@prisma/client';
+import { ZodError } from 'zod';
 import { createPrismaMemberService, type MemberService } from './services/member.service.js';
 import { createPrismaTaskService, type TaskService } from './services/task.service.js';
 import { registerMemberRoutes } from './routes/members.js';
@@ -26,8 +27,22 @@ export async function createApp(deps: AppDeps = {}) {
 
   await app.register(async (instance) => {
     instance.setErrorHandler((error, _request, reply) => {
+      if (error instanceof ZodError) {
+        return reply.status(400).send({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: error.flatten(),
+          },
+        });
+      }
       const message = error instanceof Error ? error.message : 'Unknown error';
-      reply.status(400).send({ message });
+      return reply.status(400).send({
+        error: {
+          code: 'BAD_REQUEST',
+          message,
+        },
+      });
     });
     await registerTaskRoutes(instance, service);
     await registerMemberRoutes(instance, memberService);

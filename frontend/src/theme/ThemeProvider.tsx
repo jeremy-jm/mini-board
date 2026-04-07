@@ -41,10 +41,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const mode: ThemeMode = storedTheme ?? (systemDark ? "dark" : "light");
 
   const toggle = useCallback(() => {
-    const nextTheme: ThemeMode = mode === "light" ? "dark" : "light"; //change value
+    const nextTheme: ThemeMode = mode === "light" ? "dark" : "light";
     setStoredTheme(nextTheme);
     writeTheme(nextTheme);
-  }, []);
+  }, [mode]);
 
   const value = useMemo(() => {
     return { mode, toggle };
@@ -80,6 +80,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useThemeMode() {
   const context = useContext(ThemeContext);
   if (!context) {

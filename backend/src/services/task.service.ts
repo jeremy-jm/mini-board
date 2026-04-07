@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import type {
   ReorderItem,
   TaskDto,
@@ -30,7 +31,11 @@ export interface TaskService {
 
 }
 
-function toTaskDto(task: any): TaskDto {
+type TaskWithAssignee = Prisma.TaskGetPayload<{
+  include: { assignee: true };
+}>;
+
+function toTaskDto(task: TaskWithAssignee): TaskDto {
   return {
     id: task.id,
     title: task.title,

@@ -31,7 +31,8 @@ const initialState: TaskState = {
 
 export const fetchInitialData = createAsyncThunk(
   "tasks/fetchInitialData",
-  async (_arg?: { silent?: boolean }) => {
+  async (arg?: { silent?: boolean }) => {
+    void arg;
     const [tasksResponse, membersResponse] = await Promise.all([
       apiClient.get("/tasks"),
       apiClient.get("/members"),
@@ -93,22 +94,6 @@ export const taskSlice = createSlice({
     },
     replaceTasks: (state, action: PayloadAction<Task[]>) => {
       state.tasks = action.payload;
-      state.rollbackSnapshot = null;
-    },
-    // rollback affected columns
-    rollbackAffectedColumns(
-      state,
-      action: PayloadAction<{ statuses: TaskStatus[] }>,
-    ) {
-      if (!state.rollbackSnapshot) return;
-      const statuses = new Set(action.payload.statuses);
-      const untouched = state.tasks.filter(
-        (task) => !statuses.has(task.status),
-      );
-      const rollback = state.rollbackSnapshot.filter((task) =>
-        statuses.has(task.status),
-      );
-      state.tasks = [...untouched, ...rollback];
       state.rollbackSnapshot = null;
     },
   },
@@ -186,7 +171,6 @@ export const taskSlice = createSlice({
   },
 });
 
-export const { optimisticReorder, rollbackAffectedColumns, replaceTasks } =
-  taskSlice.actions;
+export const { optimisticReorder, replaceTasks } = taskSlice.actions;
 
 export default taskSlice.reducer;
