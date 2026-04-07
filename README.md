@@ -10,28 +10,28 @@ It targets the “minimal task board” assignment while going beyond must-haves
 
 ## Features
 
-- Three-column board and cards: title, description, created time  
-- Tasks: create (modal), edit, delete  
-- Drag-and-drop: cross-column status changes and intra-column reorder; optimistic updates with rollback and error toasts on failure  
-- Extended fields (bonus-oriented): assignee (avatar), priority, due date (overdue highlight for non-done tasks)  
+- Three-column board and cards: title, description, created time
+- Tasks: create (modal), edit, delete
+- Drag-and-drop: cross-column status changes and intra-column reorder; optimistic updates with rollback and error toasts on failure
+- Extended fields (bonus-oriented): assignee (avatar), priority, due date (overdue highlight for non-done tasks)
 - Persistence: REST API + PostgreSQL (not localStorage-only)
 
 ## Stack & main dependencies
 
-| Layer | Tech / libraries |
-|------|------------------|
-| Frontend | React 19, TypeScript |
-| Build | Vite 8 |
-| State | Redux Toolkit, react-redux |
-| DnD | @dnd-kit/core, @dnd-kit/sortable |
-| UI / styling | Ant Design 6, Tailwind CSS 4 |
-| HTTP | axios |
-| i18n | i18next, react-i18next (zh-CN / en) |
-| Backend | Node.js, Fastify 5 |
-| Validation | zod |
-| ORM / DB | Prisma, PostgreSQL |
-| Frontend tests | Vitest, Testing Library |
-| Backend tests | Vitest, supertest (route injection) |
+| Layer          | Tech / libraries                    |
+| -------------- | ----------------------------------- |
+| Frontend       | React 19, TypeScript                |
+| Build          | Vite 8                              |
+| State          | Redux Toolkit, react-redux          |
+| DnD            | @dnd-kit/core, @dnd-kit/sortable    |
+| UI / styling   | Ant Design 6, Tailwind CSS 4        |
+| HTTP           | axios                               |
+| i18n           | i18next, react-i18next (zh-CN / en) |
+| Backend        | Node.js, Fastify 5                  |
+| Validation     | zod                                 |
+| ORM / DB       | Prisma, PostgreSQL                  |
+| Frontend tests | Vitest, Testing Library             |
+| Backend tests  | Vitest, supertest (route injection) |
 
 ## Architecture (brief)
 
@@ -39,28 +39,29 @@ The board and forms use **Redux** for task state; **dnd-kit** powers drag-and-dr
 
 ## Bonus items (vs. assignment)
 
-- **A — Backend & persistence:** **Node.js + Fastify + TypeScript** CRUD for tasks/members and batch reorder; **PostgreSQL** with **Prisma**; **not** localStorage as the sole store.  
+- **A — Backend & persistence:** **Node.js + Fastify + TypeScript** CRUD for tasks/members and batch reorder; **PostgreSQL** with **Prisma**; **not** localStorage as the sole store.
 - **B — Engineering & Docker:** **Dockerfiles** for frontend/backend and **`docker-compose`** to run app + DB; production-like **nginx + static assets** (see “Production-like” below).
 
 Extras (beyond minimum):
 
-- zh/en UI, light/dark theme (`class`-based, aligned with system `prefers-color-scheme` where applicable)  
-- Structured API errors, unified client error handling, skeleton loading, button loading states  
-- Performance: e.g. `React.memo`, column-scoped `useSelector`, Vite chunking, lazy-loaded board  
+- zh/en UI, light/dark theme (`class`-based, aligned with system `prefers-color-scheme` where applicable)
+- Structured API errors, unified client error handling, skeleton loading, button loading states
+- Performance: e.g. `React.memo`, column-scoped `useSelector`, Vite chunking, lazy-loaded board
 - Frontend and backend Vitest (frontend unit tests + backend services/routes)
 
 ## How to use
 
 ### Local development (no Docker)
 
-1. Run **PostgreSQL** (locally or in a container) and ensure the database name matches your URL (default in compose: `miniboard`).  
+1. Run **PostgreSQL** (locally or in a container) and ensure the database name matches your URL (default in compose: `miniboard`).
 2. Create `backend/.env` with at least:
 
    ```env
    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/miniboard?schema=public"
    ```
 
-   Adjust user, password, and port to match your instance.  
+   Adjust user, password, and port to match your instance.
+
 3. Backend:
 
    ```bash
@@ -89,12 +90,14 @@ Extras (beyond minimum):
 The root `docker-compose.yml` includes the dev stack. Recommended:
 
 ```bash
+docker compose up --build
+# or: dev/prd
 docker compose -f docker-compose.dev.yml up --build
-# or: docker compose up --build
+
 ```
 
-- Frontend: `http://localhost:5173`  
-- API: `http://localhost:3001/api/...`  
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:3001/api/...`
 - `VITE_PROXY_TARGET` points the Vite proxy at the `backend` service (see [`frontend/vite.config.ts`](frontend/vite.config.ts)).
 
 ### Production-like (nginx)
@@ -111,17 +114,53 @@ App URL: `http://localhost:8080` (confirm in `docker-compose.prd.yml`).
 
 Data lives in Docker **volumes**, not in the image. Export/backup and `down -v` caveats: [**docs/docker-data.md**](docs/docker-data.md).
 
+## GitHub Actions (CI + image publish)
+
+This repository includes two workflows:
+
+- `CI` (`.github/workflows/ci.yml`)
+  - Trigger: `pull_request` to `dev` / `master`, and `push` to `dev` / `master`
+  - Frontend job: `npm ci` + `npm run lint` + `npm run test` + `npm run build`
+  - Backend job: `npm ci` + `npm run test` + `npm run build` (includes PostgreSQL service for tests)
+- `Publish Images` (`.github/workflows/publish-images.yml`)
+  - Trigger: `push` to `dev` / `master`, and manual `workflow_dispatch`
+  - Builds and pushes 3 images to GHCR:
+    - `ghcr.io/<owner>/mini-board-frontend`
+    - `ghcr.io/<owner>/mini-board-backend`
+    - `ghcr.io/<owner>/mini-board-nginx`
+  - Channel tags:
+    - `dev` branch pushes `dev`
+    - `master` branch pushes `prd` and `latest`
+
+### GHCR permissions
+
+- Uses built-in `GITHUB_TOKEN` to publish packages.
+- Workflow permissions include:
+  - `contents: read`
+  - `packages: write`
+- If your repository is under an organization, ensure org/repo Actions policies allow publishing to GHCR packages.
+
+### Quick verification
+
+1. Open a PR to `dev` or `master` and confirm the `CI` workflow passes.
+2. Push to `dev` and confirm image tags include `dev`.
+3. Merge/push to `master` and confirm image tags include `prd` and `latest`.
+4. In GHCR package list, verify image tags include:
+   - commit SHA tag (e.g. `sha-<commit>`)
+   - branch tag (for branch builds)
+   - `latest` for default branch
+
 ## Other notes
 
-- **Env:** backend needs `DATABASE_URL`. Inside Compose, the hostname is `postgres`; on the host for Prisma CLI, use `localhost`.  
-- **Prisma P1001:** ensure Postgres is up and the URL is correct; in Docker, wait until the `postgres` service is healthy before dependents start.  
-- **Review:** assignment cares about code quality, smooth DnD, loading/errors, runnable README, and avoiding needless re-renders—keep commits and messages clear.  
+- **Env:** backend needs `DATABASE_URL`. Inside Compose, the hostname is `postgres`; on the host for Prisma CLI, use `localhost`.
+- **Prisma P1001:** ensure Postgres is up and the URL is correct; in Docker, wait until the `postgres` service is healthy before dependents start.
+- **Review:** assignment cares about code quality, smooth DnD, loading/errors, runnable README, and avoiding needless re-renders—keep commits and messages clear.
 - **Optional:** short screen recording of create / drag / edit / delete / refresh persistence.
 
 ## Related files
 
-| File | Purpose |
-|------|---------|
-| [`docker-compose.dev.yml`](docker-compose.dev.yml) | Dev: Vite + backend + Postgres |
+| File                                               | Purpose                               |
+| -------------------------------------------------- | ------------------------------------- |
+| [`docker-compose.dev.yml`](docker-compose.dev.yml) | Dev: Vite + backend + Postgres        |
 | [`docker-compose.prd.yml`](docker-compose.prd.yml) | Prod-like: nginx + backend + Postgres |
-| [`homework.md`](homework.md) | Original assignment text |
+| [`homework.md`](homework.md)                       | Original assignment text              |

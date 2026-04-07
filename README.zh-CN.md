@@ -113,6 +113,42 @@ docker compose -f docker-compose.prd.yml up --build -d
 
 数据保存在 Docker **volume** 中，不在镜像内。导出、备份与 `down -v` 风险说明见 [**docs/docker-data.md**](docs/docker-data.md)。
 
+## GitHub Actions（CI + 镜像发布）
+
+仓库已包含两个工作流：
+
+- `CI`（`.github/workflows/ci.yml`）
+  - 触发：`pull_request` 到 `dev` / `master`，以及 `push` 到 `dev` / `master`
+  - 前端任务：`npm ci` + `npm run lint` + `npm run test` + `npm run build`
+  - 后端任务：`npm ci` + `npm run test` + `npm run build`（测试阶段包含 PostgreSQL service）
+- `Publish Images`（`.github/workflows/publish-images.yml`）
+  - 触发：`push` 到 `dev` / `master`，以及手动 `workflow_dispatch`
+  - 构建并推送 3 个 GHCR 镜像：
+    - `ghcr.io/<owner>/mini-board-frontend`
+    - `ghcr.io/<owner>/mini-board-backend`
+    - `ghcr.io/<owner>/mini-board-nginx`
+  - 通道标签策略：
+    - `dev` 分支推送 `dev`
+    - `master` 分支推送 `prd` 和 `latest`
+
+### GHCR 权限说明
+
+- 使用内置 `GITHUB_TOKEN` 发布 packages。
+- Workflow 需要以下权限：
+  - `contents: read`
+  - `packages: write`
+- 若仓库在组织下，请确认组织/仓库的 Actions 策略允许发布到 GHCR。
+
+### 快速验证
+
+1. 提交 PR 到 `dev` 或 `master`，确认 `CI` 通过。
+2. 推送到 `dev`，确认 GHCR 镜像出现 `dev` 标签。
+3. 合并或推送到 `master`，确认 GHCR 镜像出现 `prd` 与 `latest` 标签。
+4. 在 GHCR 中抽查镜像 tag 是否包含：
+   - `sha-<commit>`（提交哈希标签）
+   - 分支标签（branch tag）
+   - 默认分支下的 `latest`
+
 ## README 中建议读者了解的其他信息
 
 - **环境变量**：后端依赖 `DATABASE_URL`；容器内使用主机名 `postgres` 的数据库连接串由 Compose 注入，在宿主机直接跑 Prisma 时请使用 `localhost`。  

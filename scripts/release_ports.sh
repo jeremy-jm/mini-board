@@ -8,8 +8,9 @@ set -u
 
 # Ports to free (e.g. Vite frontend + API backend)
 PORTS=(
-  3000
+  5432
   3001
+  5187
 )
 
 exit_code=0
