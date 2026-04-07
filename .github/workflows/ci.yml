@@ -47,14 +47,17 @@ jobs:
       run:
         working-directory: backend
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/miniboard?schema=public
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: miniboard
+      DATABASE_URL: ${{ secrets.DATABASE_URL || format('postgresql://postgres:{0}@localhost:5432/miniboard?schema=public', secrets.POSTGRES_PASSWORD) }}
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: miniboard
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
         ports:
           - 5432:5432
         options: >-

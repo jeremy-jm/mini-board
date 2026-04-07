@@ -35,8 +35,10 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    env_file:
+      - .env.dev
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/miniboard?schema=public}
+      DATABASE_URL: ${DATABASE_URL}
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     depends_on:

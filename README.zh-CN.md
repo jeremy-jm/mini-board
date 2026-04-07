@@ -59,7 +59,7 @@
 2. 在 `backend` 目录创建 `.env`，至少配置：
 
    ```env
-   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/miniboard?schema=public"
+   DATABASE_URL="postgresql://postgres:your_password@localhost:5432/miniboard?schema=public"
    ```
 
    用户名、密码、端口请与你的 Postgres 实例一致。  
