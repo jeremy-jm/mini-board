@@ -64,11 +64,15 @@ export function TaskFormModal({
         <Form.Item
           name="title"
           label={t("title")}
-          rules={[{ required: true, min: 2 }]}
+          rules={[{ required: true, min: 3, max: 200 }]}
         >
           <Input />
         </Form.Item>
-        <Form.Item name="description" label={t("description")}>
+        <Form.Item
+          name="description"
+          label={t("description")}
+          rules={[{ max: 1000 }]}
+        >
           <Input.TextArea rows={3} />
         </Form.Item>
         <Form.Item name="assigneeId" label={t("assignee")}>
