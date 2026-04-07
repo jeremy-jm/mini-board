@@ -57,7 +57,7 @@ Extras (beyond minimum):
 2. Create `backend/.env` with at least:
 
    ```env
-   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/miniboard?schema=public"
+   DATABASE_URL="postgresql://postgres:your_password@localhost:5432/miniboard?schema=public"
    ```
 
    Adjust user, password, and port to match your instance.
